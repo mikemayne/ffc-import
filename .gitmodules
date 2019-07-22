@@ -1,0 +1,9 @@
+[submodule "ffc"]
+	path = ffc
+	url = https://github.com/mikemayne/ffc.git
+[submodule "Source/ffc"]
+	path = Source/ffc
+	url = https://github.com/mikemayne/ffc.git
+[submodule "Source/frd"]
+	path = Source/frd
+	url = https://github.com/mikemayne/frd.git
