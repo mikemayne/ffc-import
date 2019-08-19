@@ -12,16 +12,18 @@
 #define RENDERER_H_INCLUDED
 
 #include <JuceHeader.h>
-#include <ffc.h>
+#include "ffc/ffc.h"
+#include "ControlView.h"
+#include "Element.h"
 
 using juce::Graphics;
 struct LineArray;
 struct SplMeter;
+struct Model;
 
-
-struct Renderer : Component, juce::Thread, juce::Timer
+struct Renderer : Component, Thread, Timer, ChangeListener
 {
-	explicit Renderer (Colour(*colourFunction)(double) = &Renderer::darkRgba);
+    explicit Renderer (Model& model, ffc::Constants<float>& constants, Colour(*colourFunction)(double) = &Renderer::darkRgba);
 	virtual ~Renderer ();
 
 	void paint   (Graphics& g) override;
@@ -38,17 +40,21 @@ struct Renderer : Component, juce::Thread, juce::Timer
     void render(std::vector<float> const& splMap);
     
     void timerCallback() override;
+    void changeListenerCallback (ChangeBroadcaster* source) override;
+    
 private:
-    ffc::Constants<float> constants;
-    std::vector<ffc::Source<float>> sources;
-    ffc::Polar<float> p;
+    Model& model;
+    ffc::Constants<float>& constants;
+    
+    std::vector<ffc::SoundSource<float>> sources;
+    OwnedArray<Element> elements;
     
 	bool isDirty;
-	double renderStartTime;
-	ScopedPointer <juce::Image> image;
-	int splMeterWidth;
+    bool imageReady;
+    ScopedPointer <juce::Image> image;
 
 	Colour (*colourFunction)(double);
+//    ControlView control;
 };
 
 

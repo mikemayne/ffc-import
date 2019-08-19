@@ -9,51 +9,51 @@
 */
 
 #include "Renderer.h"
+#include "Model.h"
 
-Renderer::Renderer (Colour(*colourFunction)(double))
-: Thread ("RenderThread"),
+Renderer::Renderer (Model& model, ffc::Constants<float>& constants, Colour(*colourFunction)(double)) :
+Thread ("RenderThread"),
+model (model),
+constants (constants),
 isDirty (true),
-renderStartTime (0.0),
+imageReady (false),
 image   (nullptr),
-splMeterWidth  (20),
 colourFunction (colourFunction ? colourFunction : &darkRgba)
 {
-    constants.width_px = 1024;
-    constants.height_px = 1024;
-    constants.m_per_pixel = 0.05;
-    constants.speed_of_sound_mps = 343;
-    constants.frequencyHz = 1000;
-    
-    // TODO: use real data
-    // TODO: frequency selection
-    
-    for (int i=0; i<72; ++i)
-        p.push_back({98.f, 0.f});
-    
-    for (int i=0; i<10; ++i)
-        sources.push_back({p});
+    for (int i=0; i<1; ++i)
+        sources.push_back({&model.makePolar(constants.frequencyHz)});
     
     const float x = 20; // metres
     float y = 10; // metres
     for (auto& source : sources) {
        source.acousticCentre = {x, (y += 0.4)};
     }
-    
-    setSize(constants.width_px, constants.height_px);
+    model.addChangeListener(this);
 	startThread ();
-    startTimer(20);
+    startTimer(10);
 }
 
 Renderer::~Renderer ()
 {
+    model.removeChangeListener(this);
 	stopThread (250);
+}
+
+void Renderer::changeListenerCallback (ChangeBroadcaster* source)
+{
+    if (&model == source) {
+        for (auto saus : sources) {
+            saus.polar = &model.makePolar (constants.frequencyHz);
+            isDirty = true;
+        }
+    }
 }
 
 void Renderer::paint (Graphics& g)
 {
-    if (image && !isDirty) {
+    if (image) {
         g.drawImageAt (*image, 0, 0);
-        isDirty = false;
+        imageReady = false;
     } else {
         g.fillAll(Colours::black);
     }
@@ -101,16 +101,25 @@ void Renderer::render(std::vector<float> const& splMap)
         
         bitmap.setPixelColour ((int)x, (int)y, colourFunction (max - splMap[index]));
     }
+    
 }
 
 void Renderer::run ()
 {
-    ffc::FreeFieldCalculator<float> calc(8, sources, constants);
-    ffc::FreeFieldCalculator<float>::Result r(constants.height_px * constants.width_px);
-    calc.calculate(r);
-    auto spl = ffc::convert_to_spl(r);
-    render(spl);
-    isDirty = false;
+    while (!threadShouldExit())
+    {
+        if (!isDirty) {
+            wait(10);
+            continue;
+        }
+        
+        ffc::FreeFieldCalculator<float> calc (8, sources, constants);
+        ffc::FreeFieldCalculator<float>::Result r (constants.height_px * constants.width_px);
+        calc.calculate (r);
+        auto spl = ffc::convert_to_spl (r);
+        render (spl);
+        isDirty = false; imageReady = true;
+    }
 }
 
 /**
@@ -118,7 +127,7 @@ void Renderer::run ()
  */
 void Renderer::timerCallback ()
 {
-	if (!isDirty)
+    if (imageReady)
 		repaint();
 }
 

@@ -9,7 +9,8 @@
 */
 
 #include "../JuceLibraryCode/JuceHeader.h"
-#include "Renderer.h"
+#include "MainView.h"
+#include "Model.h"
 
 //==============================================================================
 class FFCImportApplication  : public JUCEApplication
@@ -66,7 +67,7 @@ public:
                                                     DocumentWindow::allButtons)
         {
             setUsingNativeTitleBar (true);
-            setContentOwned (new Renderer(), true);
+            setContentOwned (new MainView(model), true);
 
            #if JUCE_IOS || JUCE_ANDROID
             setFullScreen (true);
@@ -94,6 +95,7 @@ public:
         */
 
     private:
+        Model model;
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainWindow)
     };
 
